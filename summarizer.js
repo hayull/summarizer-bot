@@ -1,32 +1,25 @@
-const Jsoup = org.jsoup.Jsoup;
+// api/summarize.js (Vercel 서버의 API 핸들러)
+module.exports = async (req, res) => {
+  const fetch = require('node-fetch'); // node-fetch 라이브러리 사용 (Vercel의 기본 환경에서 사용 가능)
+  const apiKey = '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';
+  const model = 'facebook/bart-large-cnn';
 
-function summarizeWithHuggingFace(text, replier) {
-  const apiKey = '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';  // Hugging Face API 키
-  const model = 'facebook/bart-large-cnn';    // 요약을 위한 모델 (BART 모델 사용)
-  
   const apiUrl = 'https://api-inference.huggingface.co/models/' + model;
+  const text = req.body.text;
 
   try {
-    const connection = new java.net.URL(apiUrl).openConnection();
-    connection.setRequestMethod('POST');
-    connection.setRequestProperty('Authorization', 'Bearer ' + apiKey);
-    connection.setRequestProperty('Content-Type', 'application/json');
-    connection.setDoOutput(true);
-    connection.setDoInput(true);
+    const response = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'Authorization': 'Bearer ' + apiKey,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ inputs: text }),
+    });
 
-    // JSON 데이터 전송
-    const body = '{"inputs": "' + text.replace(/"/g, '\\"') + '"}';
-    const outputStream = connection.getOutputStream();
-    outputStream.write(body.getBytes('UTF-8'));
-    outputStream.close();
-
-    // 응답 처리
-    const inputStream = connection.getInputStream();
-    const response = Jsoup.parse(inputStream, 'UTF-8', apiUrl).text();
-
-    return response;
+    const result = await response.json();
+    res.status(200).json({ summary: result[0] ? result[0].summary_text : '요약을 처리할 수 없습니다.' });
   } catch (error) {
-    replier.reply('요약에 실패했습니다: ' + error);
-    return null;
+    res.status(500).json({ error: '요약에 실패했습니다: ' + error.message });
   }
-}
+};
